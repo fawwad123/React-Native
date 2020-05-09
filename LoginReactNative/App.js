@@ -1,88 +1,99 @@
-
-import React from 'react';
+/*This is an Example of Facebook Login*/
+import React, { Component } from 'react';
+import { View, StyleSheet, Text, Alert, Image } from 'react-native';
 import {
-  SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  StatusBar,
-} from 'react-native';
+  LoginButton,
+  AccessToken,
+  GraphRequest,
+  GraphRequestManager,
+} from 'react-native-fbsdk';
 
-import {
-  Header,
-  Colors,
-} from 'react-native/Libraries/NewAppScreen';
+export default class App extends Component {
+  constructor() {
+    super();
+    //Setting the state for the data after login
+    this.state = {
+      user_name: '',
+      token: '',
+      profile_pic: '',
+    };
+  }
 
-import { LoginButton, AccessToken } from 'react-native-fbsdk';
+  get_Response_Info = (error, result) => {
+    if (error) {
+      //Alert for the Error
+      Alert.alert('Error fetching data: ' + error.toString());
+    } else {
+      console.warn(result);
+      //response alert
+      alert(JSON.stringify(result));
+      this.setState({ user_name: 'Welcome' + ' ' + result.name });
+      this.setState({ token: 'User Token: ' + ' ' + result.id });
+      this.setState({ profile_pic: result.picture.data.url });
+    }
+  };
 
-const App: () => React$Node = () => {
-  return (
-    <>
-      <StatusBar barStyle="dark-content"/>
-      <SafeAreaView>
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          style={styles.ScrollView}>
-            <Header />
-            <LoginButton
-              onLoginFinished={
-                (error, result) => {
-                  if (error) {
-                    console.log("login has error: " + result.error);
-                  } else if (result.isCancelled) {
-                    console.log("login is cancelled.");
-                  } else {
-                    AccessToken.getCurrentAccessToken().then(
-                      (data) => {
-                        console.log(data.accessToken.toString())
-                      }
-                    )
-                  }
-                }
-              }
-              onLogoutFinished={() => console.log("logout.")}/>
-        </ScrollView>
-      </SafeAreaView>
-    </>
-  );
-};
+  onLogout = () => {
+    //Clear the state after logout
+    this.setState({ user_name: null, token: null, profile_pic: null });
+  };
+
+  render() {
+    return (
+      <View style={styles.container}>
+        {this.state.profile_pic ? (
+          <Image
+            source={{ uri: this.state.profile_pic }}
+            style={styles.imageStyle}
+          />
+        ) : null}
+        <Text style={styles.text}> {this.state.user_name} </Text>
+        <Text> {this.state.token} </Text>
+
+        <LoginButton
+          readPermissions={['public_profile']}
+          onLoginFinished={(error, result) => {
+            if (error) {
+              alert(error);
+              alert('login has error: ' + result.error);
+            } else if (result.isCancelled) {
+              alert('login is cancelled.');
+            } else {
+              AccessToken.getCurrentAccessToken().then(data => {
+                alert(data.accessToken.toString());
+                console.warn(data)
+                const processRequest = new GraphRequest(
+                  '/me?fields=name,picture.type(large)',
+                  null,
+                  this.get_Response_Info
+                );
+                // Start the graph request.
+                new GraphRequestManager().addRequest(processRequest).start();
+              });
+            }
+          }}
+          onLogoutFinished={this.onLogout}
+        />
+      </View>
+    );
+  }
+}
 
 const styles = StyleSheet.create({
-  scrollView: {
-    backgroundColor: Colors.lighter,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
   },
-  engine: {
-    position: 'absolute',
-    right: 0,
+  text: {
+    fontSize: 20,
+    color: '#000',
+    textAlign: 'center',
+    padding: 20,
   },
-  body: {
-    backgroundColor: Colors.white,
-  },
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.black,
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-    color: Colors.dark,
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-  footer: {
-    color: Colors.dark,
-    fontSize: 12,
-    fontWeight: '600',
-    padding: 4,
-    paddingRight: 12,
-    textAlign: 'right',
+  imageStyle: {
+    width: 200,
+    height: 300,
+    resizeMode: 'contain',
   },
 });
-
-export default App;
